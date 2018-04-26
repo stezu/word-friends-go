@@ -26,10 +26,25 @@ func main() {
 	networkUndefined := true
 	tree := lib.NewWordTree()
 	var network []networkResult
+	var scanner *bufio.Scanner
 
-	scanner := bufio.NewScanner(os.Stdin)
+	// If the first argument exists, that means we are reading from a file
+	if len(os.Args) > 1 {
+		file, err := os.Open(os.Args[1])
 
-	// Loop through each line of stdin and react to the three types of inputs
+		if err != nil {
+			panic(err)
+		}
+
+		defer file.Close()
+
+		scanner = bufio.NewScanner(file)
+	} else {
+		// Otherwise, we are reading from stdin
+		scanner = bufio.NewScanner(os.Stdin)
+	}
+
+	// Loop through each line of the stream and react to the three types of inputs
 	// we can have in a file.
 	for scanner.Scan() {
 		text := scanner.Text()
