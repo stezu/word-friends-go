@@ -10,17 +10,22 @@ import (
 
 const distance = 1
 
+type networkResult struct {
+	word    string
+	results []lib.SearchResult
+}
+
 // write the number of friends since that's all the output we need
-func writeResults(network map[string][]lib.SearchResult) {
+func writeResults(network []networkResult) {
 	for _, v := range network {
-		fmt.Println(len(v))
+		fmt.Println(len(v.results))
 	}
 }
 
 func main() {
 	networkUndefined := true
-	network := make(map[string][]lib.SearchResult)
 	tree := lib.NewWordTree()
+	var network []networkResult
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -32,7 +37,10 @@ func main() {
 		if text == "END OF INPUT" {
 			networkUndefined = false
 		} else if networkUndefined {
-			network[text] = []lib.SearchResult{} // TODO: think about this differently?
+			network = append(network, networkResult{
+				word:    text,
+				results: nil,
+			})
 		} else {
 			tree.Insert(text)
 		}
@@ -45,8 +53,8 @@ func main() {
 	wordSearch := lib.NewWordSearch(tree)
 
 	// Search for friends of each word in the input
-	for k := range network {
-		searchResults := wordSearch.Search(k, distance)
+	for k, v := range network {
+		searchResults := wordSearch.Search(v.word, distance)
 		var filteredResults []lib.SearchResult
 
 		// Remove all search results which are not exactly the right distance away
@@ -56,7 +64,7 @@ func main() {
 			}
 		}
 
-		network[k] = filteredResults
+		network[k].results = filteredResults
 	}
 
 	writeResults(network)
