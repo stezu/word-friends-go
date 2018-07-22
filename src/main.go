@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 
 	"github.com/stezu/word-friends-go/src/lib"
@@ -10,39 +9,39 @@ import (
 
 const distance = 1
 
-type networkResult struct {
-	word    string
-	results []lib.SearchResult
+func getFileFromStdin() *bufio.Scanner {
+	return bufio.NewScanner(os.Stdin)
 }
 
-// write the number of friends since that's all the output we need
-func writeResults(network []networkResult) {
-	for _, v := range network {
-		fmt.Println(len(v.results))
+func getFileFromFilename(fileName string) (*bufio.Scanner, error) {
+	file, err := os.Open(os.Args[1])
+
+	if err != nil {
+		return nil, err
 	}
+
+	return bufio.NewScanner(file), nil
 }
 
-func main() {
-	networkUndefined := true
-	tree := lib.NewWordTree()
-	var network []networkResult
-	var scanner *bufio.Scanner
-
+func parseArgs() (*bufio.Scanner, error) {
 	// If the first argument exists, that means we are reading from a file
 	if len(os.Args) > 1 {
-		file, err := os.Open(os.Args[1])
+		fileScanner, err := getFileFromFilename(os.Args[1])
 
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
-		defer file.Close()
-
-		scanner = bufio.NewScanner(file)
-	} else {
-		// Otherwise, we are reading from stdin
-		scanner = bufio.NewScanner(os.Stdin)
+		return fileScanner, nil
 	}
+
+	// Otherwise, we are reading from stdin
+	return getFileFromStdin(), nil
+}
+
+func buildNetwork(scanner *bufio.Scanner) (*lib.Network, error) {
+	network := lib.NewNetwork()
+	networkDefined := false
 
 	// Loop through each line of the stream and react to the three types of inputs
 	// we can have in a file.
@@ -50,37 +49,33 @@ func main() {
 		text := scanner.Text()
 
 		if text == "END OF INPUT" {
-			networkUndefined = false
-		} else if networkUndefined {
-			network = append(network, networkResult{
-				word:    text,
-				results: nil,
-			})
+			networkDefined = true
+		} else if !networkDefined {
+			network.AddWord(text)
 		} else {
-			tree.Insert(text)
+			network.Search(text, distance)
 		}
 	}
 
 	if scanner.Err() != nil {
-		panic(scanner.Err())
+		return nil, scanner.Err()
 	}
 
-	wordSearch := lib.NewWordSearch(tree)
+	return network, nil
+}
 
-	// Search for friends of each word in the input
-	for k, v := range network {
-		searchResults := wordSearch.Search(v.word, distance)
-		var filteredResults []lib.SearchResult
+func main() {
+	scanner, err := parseArgs()
 
-		// Remove all search results which are not exactly the right distance away
-		for _, result := range searchResults {
-			if result.Distance == distance {
-				filteredResults = append(filteredResults, result)
-			}
-		}
-
-		network[k].results = filteredResults
+	if err != nil {
+		panic(err)
 	}
 
-	writeResults(network)
+	network, err := buildNetwork(scanner)
+
+	if err != nil {
+		panic(err)
+	}
+
+	network.PrintResults(distance)
 }
